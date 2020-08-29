@@ -37,26 +37,35 @@ class res_partner(models.Model):
         
     # Based on odoo_ruc_vat_validation addon solution by py-dev.com
     @api.onchange('vat')
-    def on_change_vat(self): 
+    def on_change_vat(self):
         xmlPath = os.path.dirname(os.path.abspath(__file__))+'/xml'
+        _continue = True
         for record in self:
             if (record.vat) :
                 ruc = record.vat
-                tipo_documento = record.sunat_tipo_documento
-                if(ruc!=""):
-                    SunatService = Service()
-                    SunatService.setXMLPath(xmlPath)
-                    response = {}
-                    response = SunatService.consultRUC_Pydevs(tipo_documento,ruc)                    
-                    #raise Warning(len(response['data']))
-                    if len(response['data'])==0:
-                        raise Warning("El RUC no fue encontrado en registros de SUNAT")
-                    else:
+                if(ruc):
+                    if(int(ruc)==0 and len(ruc)>0):                        
+                        _continue = False
+                if(_continue):
+                    tipo_documento = record.sunat_tipo_documento
+                    if(ruc!=""):
+                        SunatService = Service()
+                        SunatService.setXMLPath(xmlPath)
+                        response = {}
+                        response = SunatService.consultRUC_Pydevs(tipo_documento,ruc)                    
                         
-                        self.update_document(response)
-                        #self.street = response['address']
-                        #self.name = response["name"]
-                        #self.city = response["city"]
+                        if len(response['data'])==0:
+                            return { 
+                                        'warning':{'title':_('Identificación del contacto'),
+                                        'message':_('El documento no fue encontrado.')},
+                                        'value':{'vat':ruc}
+                                    }
+                        else:
+                            
+                            self.update_document(response)
+                            #self.street = response['address']
+                            #self.name = response["name"]
+                            #self.city = response["city"]
     
     @api.one
     def update_document(self, response):
